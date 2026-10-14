@@ -8,18 +8,28 @@ import java.io.File;
 
 public class Main {
     public static void main(String args[])throws Exception{
-        String path=args.length>0?args[0]: "C:/janani/cdprjt/sqlinjectiondetector/testfiles/safe.java";
-        CompilationUnit cu=StaticJavaParser.parse(new File(path));
-        cu.accept(new SqlInjectionVisitor(),null);
-        System.out.println("scan complete: "+path);
+        File folder = new File(args.length > 0 ? args[0] : "testfiles");
+        File[] files = folder.listFiles((d, n) -> n.endsWith(".java"));
+
+        if (files == null) {
+            System.out.println("Folder not found: " + folder.getAbsolutePath());
+            return;
+        }
+
+        for (File f : files) {
+            System.out.println("Scanning: " + f.getName());
+            CompilationUnit cu = StaticJavaParser.parse(f);
+            cu.accept(new SqlInjectionVisitor(), null);
+        }
+        System.out.println("Scan complete");
     }
 }
 class SqlInjectionVisitor extends VoidVisitorAdapter<Void> {
     @Override
     public void visit(MethodCallExpr call, Void arg) {
         super.visit(call, arg);
-        String name = call.getNameAsString();
-        if (name.equals("executeQuery") || name.equals("executeUpdate")) {
+        String nm = call.getNameAsString();
+        if (nm.equals("executeQuery") || nm.equals("executeUpdate")) {
             if (!call.getArguments().isEmpty()) {
                 Expression first = call.getArgument(0);
                 if (first.isBinaryExpr()
